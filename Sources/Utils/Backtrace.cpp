@@ -15,7 +15,7 @@
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <execinfo.h>
-#elif defined(OS_WIN32)
+#elif defined(OS_WIN32) && !defined(PLATFORM_NXDK)
 #include <dbghelp.h>
 #include <windows.h>
 #include <mutex>
@@ -109,7 +109,7 @@ void PrintBacktrace() {
     ::free(demangled);
   }
 }
-#elif defined(OS_WIN32)
+#elif defined(OS_WIN32) && !defined(PLATFORM_NXDK)
 
 static HANDLE SymGetCurrentProcess() {
   // Based on

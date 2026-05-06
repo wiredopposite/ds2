@@ -14,6 +14,8 @@
 
 #if defined(OS_LINUX)
 #include "DebugServer2/Target/Linux/Process.h"
+#elif defined(OS_WIN32) && (defined(PLATFORM_NXDK) || defined(NXDK))
+#include "DebugServer2/Target/NXDK/Process.h"
 #elif defined(OS_WIN32)
 #include "DebugServer2/Target/Windows/Process.h"
 #elif defined(OS_FREEBSD)
@@ -29,6 +31,8 @@ namespace Target {
 
 #if defined(OS_LINUX)
 using Linux::Process;
+#elif defined(OS_WIN32) && (defined(PLATFORM_NXDK) || defined(NXDK))
+using Xbox::Process;
 #elif defined(OS_WIN32)
 using Windows::Process;
 #elif defined(OS_FREEBSD)

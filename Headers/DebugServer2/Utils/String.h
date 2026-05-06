@@ -41,7 +41,7 @@ static inline int VSNPrintf(char *str, size_t size, char const *format,
 static inline int SNPrintf(char *str, size_t size, char const *format, ...)
     DS2_ATTRIBUTE_PRINTF(3, 4);
 
-#if defined(OS_WIN32) && !defined(PLATFORM_MINGW)
+#if defined(OS_WIN32) && !defined(PLATFORM_MINGW) && !defined(PLATFORM_NXDK)
 // MSVC does not have snprintf, and has a vsnprintf that does not have the same
 // semantics as the linux one, which means we have to provide wrappers for
 // both.
@@ -56,7 +56,7 @@ static inline int VSNPrintf(char *str, size_t size, char const *format,
   }
   return res;
 }
-#elif defined(OS_POSIX) || (defined(OS_WIN32) && defined(PLATFORM_MINGW))
+#elif defined(OS_POSIX) || (defined(OS_WIN32) && (defined(PLATFORM_MINGW) || defined(PLATFORM_NXDK)))
 // The posix systems we support, as well as MinGW (which provides a gnu
 // environment on Windows, with GNU semantics) have a sane vsnprintf. Use that.
 static inline int VSNPrintf(char *str, size_t size, char const *format,
@@ -73,7 +73,7 @@ static inline int SNPrintf(char *str, size_t size, char const *format, ...) {
   return res;
 }
 
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
 static inline std::wstring NarrowToWideString(std::string const &s) {
   std::vector<wchar_t> res;
   int size;

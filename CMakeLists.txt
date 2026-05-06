@@ -9,10 +9,13 @@
 ##
 
 cmake_minimum_required(VERSION 3.25)
+set(CMAKE_TOOLCHAIN_FILE $ENV{NXDK_DIR}/cmake/toolchain.cmake)
 cmake_policy(SET CMP0054 NEW)
 
 project(DebugServer2
   LANGUAGES C CXX)
+
+add_subdirectory(${NXDK_DIR} nxdk)
 
 set(DS2_PROGRAM_PREFIX "" CACHE STRING "Prefix to apply to the ds2 binary")
 
@@ -137,6 +140,9 @@ endforeach()
 
 if(ANDROID)
   set(RegsGenOS linux)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+  # nxdk reports Generic as system name; RegsGen2 expects a concrete OS ABI.
+  set(RegsGenOS windows)
 else()
   set(RegsGenOS $<LOWER_CASE:${CMAKE_SYSTEM_NAME}>)
 endif()
@@ -273,19 +279,34 @@ elseif(DS2_ARCHITECTURE STREQUAL RISCV)
 endif()
 
 # OS Sources
-if(WIN32 OR WINDOWS_STORE)
-  target_sources(ds2 PRIVATE
-    Sources/Host/Windows/File.cpp
-    Sources/Host/Windows/Platform.cpp
-    Sources/Host/Windows/ProcessSpawner.cpp
+if(WIN32 OR WINDOWS_STORE OR CMAKE_SYSTEM_NAME STREQUAL "Generic")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    target_sources(ds2 PRIVATE
+      Sources/Host/NXDK/File.cpp
+      Sources/Host/NXDK/Platform.cpp
+      Sources/Host/NXDK/ProcessSpawner.cpp
 
-    Sources/Target/Windows/Process.cpp
-    Sources/Target/Windows/Thread.cpp
-    Sources/Target/Windows/${DS2_ARCHITECTURE}/Thread${DS2_ARCHITECTURE}.cpp
+      Sources/Target/NXDK/Process.cpp
+      Sources/Target/NXDK/Thread.cpp
 
-    Sources/Utils/Windows/Daemon.cpp
-    Sources/Utils/Windows/FaultHandler.cpp
-    Sources/Utils/Windows/Stringify.cpp)
+      Sources/Utils/NXDK/Daemon.cpp
+      Sources/Utils/NXDK/CRTCompat.cpp
+      Sources/Utils/NXDK/FaultHandler.cpp
+      Sources/Utils/NXDK/Stringify.cpp)
+  else()
+    target_sources(ds2 PRIVATE
+      Sources/Host/Windows/File.cpp
+      Sources/Host/Windows/Platform.cpp
+      Sources/Host/Windows/ProcessSpawner.cpp
+
+      Sources/Target/Windows/Process.cpp
+      Sources/Target/Windows/Thread.cpp
+      Sources/Target/Windows/${DS2_ARCHITECTURE}/Thread${DS2_ARCHITECTURE}.cpp
+
+      Sources/Utils/Windows/Daemon.cpp
+      Sources/Utils/Windows/FaultHandler.cpp
+      Sources/Utils/Windows/Stringify.cpp)
+  endif()
 else()
   # Assumes that any non-Windows platform is POSIX.
   target_sources(ds2 PRIVATE
@@ -358,6 +379,8 @@ target_include_directories(ds2 PUBLIC
   Headers
   ${CMAKE_CURRENT_BINARY_DIR}/Headers)
 
+target_link_libraries(ds2 PUBLIC nxdk_core nxdk_net)
+
 set_target_properties(ds2 PROPERTIES
   OUTPUT_NAME "${DS2_PROGRAM_PREFIX}ds2")
 
@@ -429,7 +452,7 @@ if("${BSD}" STREQUAL "FreeBSD")
   target_link_libraries(ds2 PRIVATE util procstat)
 endif()
 
-if(WIN32)
+if(WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
   target_link_libraries(ds2 PRIVATE advapi32 shlwapi ws2_32 dbghelp)
   if(WINDOWS_STORE)
     target_link_libraries(ds2 PRIVATE onecore)

@@ -33,8 +33,13 @@ namespace ds2 {
 #if defined(OS_WIN32)
 typedef DWORD ProcessId;
 typedef DWORD ThreadId;
+#if defined(PLATFORM_NXDK)
+typedef DWORD UserId;
+typedef DWORD GroupId;
+#else
 typedef PSID UserId;
 typedef PSID GroupId;
+#endif
 #define PRI_PID "lu"
 #else
 typedef pid_t ProcessId;
@@ -235,7 +240,7 @@ struct HostInfo {
   }
 };
 
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
 namespace {
 inline BOOL AllocateAndCopySid(const PSID pSid, PSID *ppSid) noexcept {
   if (!IsValidSid(pSid))
@@ -298,9 +303,12 @@ struct ProcessInfo {
 
     name.clear();
 
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
     realUid = nullptr;
     realGid = nullptr;
+#elif defined(OS_WIN32)
+  realUid = 0;
+  realGid = 0;
 #else
     realUid = 0;
     realGid = 0;
@@ -320,7 +328,7 @@ struct ProcessInfo {
     osVendor.clear();
   }
 
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
   ProcessInfo(const ProcessInfo &other)
       : pid(other.pid), name(other.name), cpuType(other.cpuType),
         cpuSubType(other.cpuSubType), nativeCPUType(other.nativeCPUType),

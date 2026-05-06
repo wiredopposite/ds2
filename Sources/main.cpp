@@ -35,7 +35,9 @@
 #include <string>
 #include <thread>
 
+#if defined(OS_POSIX)
 #include <fcntl.h>
+#endif
 #if HAVE_TERMIOS_H
 #include <termios.h>
 #endif

@@ -29,6 +29,16 @@ using ds2::Utils::Stringify;
 namespace ds2 {
 namespace GDBRemote {
 
+namespace {
+std::string BaseName(std::string const &path) {
+  size_t pos = path.find_last_of("/\\");
+  if (pos == std::string::npos) {
+    return path;
+  }
+  return path.substr(pos + 1);
+}
+} // namespace
+
 DebugSessionImplBase::DebugSessionImplBase(StringCollection const &args,
                                            EnvironmentBlock const &env)
     : DummySessionDelegateImpl(), _resumeSession(nullptr) {
@@ -465,6 +475,14 @@ ErrorCode DebugSessionImplBase::onQueryFileLoadAddress(
     return kErrorProcessNotFound;
   }
 
+#if defined(NXDK)
+  std::string targetBase = BaseName(file_path);
+  CHK(_process->enumerateMappedFiles([&](MappedFileInfo const &file) {
+    if (file.path == file_path || BaseName(file.path) == targetBase) {
+      address = Address(file.baseAddress);
+    }
+  }));
+#else
   std::filesystem::path target(file_path);
   CHK(_process->enumerateMappedFiles([&](MappedFileInfo const &file) {
     std::filesystem::path candidate(file.path);
@@ -473,6 +491,7 @@ ErrorCode DebugSessionImplBase::onQueryFileLoadAddress(
       address = Address(file.baseAddress);
     }
   }));
+#endif
   if (!address.valid()) {
     return kErrorNotFound;
   }
@@ -555,8 +574,14 @@ ErrorCode DebugSessionImplBase::onXferRead(Session &session,
       if (library.main)
         return;
 
-      ss << "  <library name=\"" << std::filesystem::path(library.path).filename().string() << "\">"
+    #if defined(NXDK)
+      ss << "  <library name=\"" << BaseName(library.path) << "\">"
          << std::endl;
+    #else
+      ss << "  <library name=\""
+         << std::filesystem::path(library.path).filename().string()
+         << "\">" << std::endl;
+    #endif
       for (auto section : library.sections)
         ss << "    <section address=\"0x" << std::hex << section << "\" />"
            << std::endl;

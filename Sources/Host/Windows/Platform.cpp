@@ -21,7 +21,9 @@
 #include <shlwapi.h>
 #include <vector>
 #include <windows.h>
+#if !defined(PLATFORM_NXDK)
 #include <winsock2.h>
+#endif
 
 namespace ds2 {
 namespace Host {
@@ -32,9 +34,11 @@ void Platform::Initialize() {
   // to see output as it gets produced.
   setvbuf(stdout, nullptr, _IONBF, 0);
 
+#if !defined(PLATFORM_NXDK)
   // Initialize the socket subsystem.
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 }
 
 size_t Platform::GetPageSize() {
@@ -56,7 +60,7 @@ const char *Platform::GetHostName(bool fqdn) {
     int rc;
 
     rc = ::gethostname(hostname, sizeof(hostname));
-    if (rc == SOCKET_ERROR) {
+    if (rc != 0) {
       hostname[0] = '\0';
       return nullptr;
     }

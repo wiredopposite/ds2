@@ -10,6 +10,7 @@
 
 # Output Directories
 /build/
+/_build/
 /html/
 /out/
 

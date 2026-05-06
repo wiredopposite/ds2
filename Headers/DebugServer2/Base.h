@@ -12,10 +12,19 @@
 
 #if defined(_WIN32)
 // clang-format off
+#if !defined(NXDK)
 #include <winsock2.h>
+#endif
 #include <windef.h>
+#include <windows.h>
 // clang-format on
-#if !defined(__MINGW32__)
+#if defined(NXDK)
+#include <climits>
+typedef int ssize_t;
+#ifndef SSIZE_MAX
+#define SSIZE_MAX INT_MAX
+#endif
+#else
 typedef SSIZE_T ssize_t;
 #endif
 #else
@@ -62,6 +71,8 @@ typedef SSIZE_T ssize_t;
 #elif defined(OS_WIN32)
 #if defined(__MINGW32__)
 #define PLATFORM_MINGW
+#elif defined(NXDK)
+#define PLATFORM_NXDK
 #endif
 #endif
 

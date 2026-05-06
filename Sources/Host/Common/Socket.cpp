@@ -12,17 +12,27 @@
 #include "DebugServer2/Utils/Log.h"
 #include "DebugServer2/Utils/String.h"
 #include "DebugServer2/Utils/Stringify.h"
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
 #include "DebugServer2/Host/Windows/ExtraWrappers.h"
 #endif
 
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #define SOCK_ERRNO WSAGetLastError()
 #define SOCK_WOULDBLOCK WSAEWOULDBLOCK
 #define SOCK_NAMETOOLONG WSAENAMETOOLONG
 #define SOCK_ERRNO_STRINGIFY Stringify::WSAError
+#elif defined(OS_WIN32) && defined(PLATFORM_NXDK)
+#include <cerrno>
+#include <cstring>
+#include <lwip/inet.h>
+#include <lwip/netdb.h>
+#include <lwip/sockets.h>
+#define SOCK_ERRNO errno
+#define SOCK_WOULDBLOCK EWOULDBLOCK
+#define SOCK_NAMETOOLONG ENAMETOOLONG
+#define SOCK_ERRNO_STRINGIFY strerror
 #elif defined(OS_POSIX)
 #include <arpa/inet.h>
 #include <cerrno>
@@ -100,8 +110,10 @@ void Socket::close() {
     return;
   }
 
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !defined(PLATFORM_NXDK)
   ::closesocket(_handle);
+#elif defined(OS_WIN32) && defined(PLATFORM_NXDK)
+  ::lwip_close(_handle);
 #else
   ::close(_handle);
 #endif
@@ -247,7 +259,12 @@ std::unique_ptr<Socket> Socket::accept() {
   socklen_t sslen = sizeof(ss);
   SOCKET handle;
 
-  handle = ::accept(_handle, reinterpret_cast<struct sockaddr *>(&ss), &sslen);
+  handle =
+#if defined(OS_WIN32) && defined(PLATFORM_NXDK)
+      ::lwip_accept(_handle, reinterpret_cast<struct sockaddr *>(&ss), &sslen);
+#else
+      ::accept(_handle, reinterpret_cast<struct sockaddr *>(&ss), &sslen);
+#endif
   if (handle == INVALID_SOCKET) {
     _lastError = SOCK_ERRNO;
     return nullptr;
@@ -288,7 +305,12 @@ bool Socket::connect(std::string const &host, std::string const &port) {
     if (!create(result->ai_family)) {
       continue;
     }
-    handle = ::connect(_handle, result->ai_addr, result->ai_addrlen);
+    handle =
+#if defined(OS_WIN32) && defined(PLATFORM_NXDK)
+        ::lwip_connect(_handle, result->ai_addr, result->ai_addrlen);
+#else
+        ::connect(_handle, result->ai_addr, result->ai_addrlen);
+#endif
     if (handle == INVALID_SOCKET) {
       close();
       continue;
@@ -315,11 +337,19 @@ bool Socket::setNonBlocking() {
   }
 
 #if defined(OS_WIN32)
+#if defined(PLATFORM_NXDK)
+  int nonBlocking = 1;
+  if (::lwip_ioctl(_handle, FIONBIO, &nonBlocking) < 0) {
+    _lastError = SOCK_ERRNO;
+    return false;
+  }
+#else
   u_long set = 1;
   if (::ioctlsocket(_handle, FIONBIO, &set) == SOCKET_ERROR) {
     _lastError = SOCK_ERRNO;
     return false;
   }
+#endif
 #else
   int flags = ::fcntl(_handle, F_GETFL, 0) | O_NONBLOCK;
   if (::fcntl(_handle, F_SETFL, flags) < 0) {
@@ -336,7 +366,11 @@ ssize_t Socket::send(void const *buffer, size_t length) {
   }
 
   ssize_t nsent =
-      ::send(_handle, reinterpret_cast<const char *>(buffer), length, 0);
+  #if defined(OS_WIN32) && defined(PLATFORM_NXDK)
+    ::lwip_send(_handle, reinterpret_cast<const char *>(buffer), length, 0);
+  #else
+    ::send(_handle, reinterpret_cast<const char *>(buffer), length, 0);
+  #endif
   if (nsent < 0) {
     int err = SOCK_ERRNO;
     if (err != SOCK_WOULDBLOCK) {
@@ -416,7 +450,14 @@ bool Socket::getSocketInfo(struct sockaddr_storage *ss) const {
   }
 
   socklen_t sslen = sizeof(struct sockaddr_storage);
-  auto func = listening() ? ::getsockname : ::getpeername;
+  auto func = listening()
+#if defined(OS_WIN32) && defined(PLATFORM_NXDK)
+                  ? ::lwip_getsockname
+                  : ::lwip_getpeername;
+#else
+                  ? ::getsockname
+                  : ::getpeername;
+#endif
   return func(_handle, reinterpret_cast<struct sockaddr *>(ss), &sslen) >= 0;
 }
 

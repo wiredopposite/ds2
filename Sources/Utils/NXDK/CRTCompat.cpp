@@ -8,16 +8,12 @@
 // PATENTS file in the same directory.
 //
 
-#pragma once
+#include <cstdlib>
 
-#include "DebugServer2/Base.h"
-
-#if defined(OS_POSIX)
-#include "DebugServer2/Host/POSIX/ProcessSpawner.h"
-#elif defined(OS_WIN32) && defined(PLATFORM_NXDK)
-#include "DebugServer2/Host/NXDK/ProcessSpawner.h"
-#elif defined(OS_WIN32)
-#include "DebugServer2/Host/Windows/ProcessSpawner.h"
-#else
-#error "Target not supported."
-#endif
+extern "C" double atof(char const *str) {
+  if (str == nullptr) {
+    return 0.0;
+  }
+  char *end = nullptr;
+  return std::strtod(str, &end);
+}

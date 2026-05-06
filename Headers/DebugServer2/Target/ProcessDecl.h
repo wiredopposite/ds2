@@ -26,6 +26,9 @@ class ProcessBase;
 #if defined(OS_LINUX)
 __FORWARD_DECLARE(Linux, Process);
 __FORWARD_DECLARE(Linux, Thread);
+#elif defined(OS_WIN32) && (defined(PLATFORM_NXDK) || defined(NXDK))
+__FORWARD_DECLARE(Xbox, Process);
+__FORWARD_DECLARE(Xbox, Thread);
 #elif defined(OS_WIN32)
 __FORWARD_DECLARE(Windows, Process);
 __FORWARD_DECLARE(Windows, Thread);

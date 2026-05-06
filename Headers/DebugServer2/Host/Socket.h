@@ -13,8 +13,14 @@
 #include "DebugServer2/Host/Channel.h"
 
 #include <memory>
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && !(defined(PLATFORM_NXDK) || defined(NXDK))
 #include <winsock2.h>
+#elif defined(OS_WIN32) && (defined(PLATFORM_NXDK) || defined(NXDK))
+#include <lwip/sockets.h>
+#undef close
+#undef accept
+#undef connect
+#undef send
 #elif defined(OS_POSIX)
 #include <sys/socket.h>
 #endif
@@ -24,7 +30,11 @@ namespace Host {
 
 class Socket : public Channel, public make_unique_enabler<Socket> {
 private:
-#if defined(OS_WIN32)
+#if defined(OS_WIN32) && (defined(PLATFORM_NXDK) || defined(NXDK))
+  typedef int SOCKET;
+  static SOCKET const INVALID_SOCKET = -1;
+  typedef ::socklen_t socklen_t;
+#elif defined(OS_WIN32)
   typedef int socklen_t;
 #elif defined(OS_POSIX)
   typedef int SOCKET;

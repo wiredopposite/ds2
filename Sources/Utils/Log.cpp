@@ -19,7 +19,9 @@
 #endif
 #include <cstdio>
 #include <cstring>
+#if !defined(PLATFORM_NXDK)
 #include <fcntl.h>
+#endif
 #include <limits.h>
 #include <sstream>
 #if !defined(OS_WIN32)
